@@ -44,26 +44,16 @@ def run_mem_gemini_testing(model_name="", iter_num=1):
 
     cai_version = colossalai.__version__
     logger.info(f'using Colossal-AI version {cai_version}')
-    if version.parse(cai_version) > version.parse("0.1.10"):
-        from colossalai.gemini import ChunkManager, GeminiManager, search_chunk_configuration
-        config_dict, _ = search_chunk_configuration(model, search_range_mb=1, search_interval_byte=100)
-        print(config_dict)
-        chunk_manager = ChunkManager(config_dict,
-                                     init_device=GeminiManager.get_default_device(PLACEMENT_POLICY))
-        gemini_manager = GeminiManager(PLACEMENT_POLICY, chunk_manager)
-        model = ZeroDDP(model, gemini_manager)
-    elif version.parse(cai_version) <= version.parse("0.1.10") and version.parse(cai_version) >= version.parse("0.1.9"):
-        from colossalai.gemini import ChunkManager, GeminiManager
-        chunk_size = ChunkManager.search_chunk_size(model, 64 * 1024 ** 2, 32)
-        chunk_manager = ChunkManager(chunk_size, pg, enable_distributed_storage=True,
-                                     init_device=GeminiManager.get_default_device(PLACEMENT_POLICY))
-
-    if version.parse(torch.__version__) > version.parse("0.1.11"):
-        logger.error(f'{torch.__version__} may not supported, please use torch version 0.1.11')
-
+    from colossalai.gemini import ChunkManager, GeminiManager, search_chunk_configuration
+    config_dict, _ = search_chunk_configuration(model, search_range_mb=1, search_interval_byte=100)
+    print(config_dict)
+    chunk_manager = ChunkManager(config_dict,
+                                    init_device=GeminiManager.get_default_device(PLACEMENT_POLICY))
+    gemini_manager = GeminiManager(PLACEMENT_POLICY, chunk_manager)
+    model = ZeroDDP(model, gemini_manager)
+    
     logger.info(get_mem_info(prefix='After init model, '), ranks=[0])
-
-    logger.info(chunk_manager, ranks=[0])
+    # logger.info(chunk_manager, ranks=[0])
 
     model.train()
 
@@ -72,8 +62,10 @@ def run_mem_gemini_testing(model_name="", iter_num=1):
         loss = torch.mean(output)
         model.backward(loss)
 
-    cuda_non_model_data_list = np.array(model.gemini_manager._mem_stats_collector.non_model_data_list('cuda')) / 1024 ** 2
-    print("cuda_non_model_data_list", len(cuda_non_model_data_list))
+    cuda_non_model_data_list = model.gemini_manager._mem_stats_collector.non_model_data_list('cuda') 
+    cuda_non_model_data_np_list = np.array(cuda_non_model_data_list) / 1024 ** 2 
+    print("cuda_non_model_data_list", len(cuda_non_model_data_np_list))
+    print(cuda_non_model_data_list)
 
     res_file = open("gemini_results/" + model_name + ".txt", "w", encoding="utf-8")
     for ddd in cuda_non_model_data_list:

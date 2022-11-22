@@ -14,8 +14,10 @@ def run_mem_collector_testing(model_name=""):
     mem_collector = MemStatsCollectorStatic(model)
     mem_collector.init_mem_stats(**data_args)
 
+    
     cuda_non_model_data_list = np.array(mem_collector._non_model_data_cuda_list) / 1024 ** 2
     print("_non_model_data_cuda_list", len(cuda_non_model_data_list))
+    print(mem_collector._non_model_data_cuda_list)
 
     res_file = open("static_results/" + model_name + ".txt", "w", encoding="utf-8")
     for ddd in cuda_non_model_data_list:
