@@ -77,7 +77,7 @@ def verification(model_name="", tracer=""):
     colo_set_process_memory_fraction(fraction)
 
     tracer_res = []
-    with open(tracer + "_results/" + model_name + ".txt", "r") as f:
+    with open("tracer_results/" + tracer + "_" + model_name + ".txt", "r") as f:
         for line in f:
             line = line.strip()
             if line == "":
@@ -106,6 +106,6 @@ if __name__ == '__main__':
     parser.add_argument("-m_name", type=str, default="simplenet",
                         choices=["gpt2", "bert", "albert", "simplenet", "alexnet", "vgg16", "resnet18"],
                         help="model name")
-    parser.add_argument("-tracer", type=str, default="static", choices=["static", "wrapper", "gemini"])
+    parser.add_argument("-tracer", type=str, default="static", choices=["static", "module_wrapper", "param_wrapper", "gemini"])
     args = parser.parse_args()
     verification(args.m_name, args.tracer)

@@ -12,12 +12,14 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
     get_components_func = non_distributed_component_funcs.get_callable(model_name)
     model_builder, data_gen = get_components_func()
 
-    with ColoInitContext(device=get_current_device()):
+    with ColoInitContext(device=torch.device('cpu')):
         model = model_builder(checkpoint=False)
 
     data_args = data_gen(device=get_current_device())
 
     model = ParamWrapper(model)
+
+    print("model data", torch.cuda.memory_allocated() / 1024**2)
 
     # for n, buff in model.module.named_buffers():
     #     buff.data = buff.data.cuda()
@@ -33,7 +35,7 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
 
     res_file = open("tracer_results/param_wrapper_" + model_name + ".txt", "w", encoding="utf-8")
     for ddd in cuda_non_model_data_list:
-        res_file.write(str(ddd/2) + "\n")
+        res_file.write(str(ddd) + "\n")
     res_file.close()
 
 

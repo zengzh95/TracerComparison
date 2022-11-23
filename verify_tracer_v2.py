@@ -63,7 +63,7 @@ def verification(model_name=""):
 
     verf_list = np.array(ophook_list[0].non_model_list[1:]) / 2 /1024**2
     print(verf_list)
-    res_file = open("verify_results/" + model_name + ".txt", "w")
+    res_file = open("tracer_results/verify_" + model_name + ".txt", "w")
     for val in verf_list:
         res_file.write(str(val) + "\n")
     res_file.close()

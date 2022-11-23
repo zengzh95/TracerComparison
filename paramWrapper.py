@@ -4,8 +4,6 @@ from paramOpHook import ParamHook
 from colossalai.tensor.param_op_hook import ParamOpHookManager
 from colossalai.tensor.colo_parameter import ColoParameter
 
-__all__ = ['MemtracerWrapper']
-
 
 def _cast_float(args, dtype: torch.dtype):
     if isinstance(args, torch.Tensor) and torch.is_floating_point(args):
@@ -59,8 +57,3 @@ class ParamWrapper(torch.nn.Module):
             buffer.data = buffer.cuda()
             if torch.is_floating_point(buffer):
                 buffer.data = buffer.half()
-
-
-def MemtracerWrapper(model):
-    engine = ParamWrapper(model)
-    return engine

@@ -26,7 +26,7 @@ def run_mem_wrapper_testing(model_name="", iter_num=1):
     print("cuda_non_model_data_list", len(cuda_non_model_data_list))
     print(model._ophook_list[0]._non_model_data_list)
 
-    res_file = open("tracer_results/module_wrapper" + model_name + ".txt", "w", encoding="utf-8")
+    res_file = open("tracer_results/module_wrapper_" + model_name + ".txt", "w", encoding="utf-8")
     for ddd in cuda_non_model_data_list:
         res_file.write(str(ddd/2) + "\n")
     res_file.close()
