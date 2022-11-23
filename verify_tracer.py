@@ -15,22 +15,51 @@ class VerifyOpHook(BaseOpHook):
         self.index = 0
         self.mem_info_list = mem_info_list
         self.max_mem = non_model_data_max_mem
+        self.start_bwd = False
+        self.mem_offset = 4 * 1024 ** 2
 
     def pre_fwd_exec(self, module: torch.nn.Module, *args):
         available_mem = self.max_mem - self.mem_info_list[self.index] * 2 * 1024 ** 2
-        self.temp_tensor = torch.empty(int(0.95*available_mem), dtype=torch.int8, device="cuda:0")
+        try:
+            self.temp_tensor = torch.empty(int(0.96*available_mem), dtype=torch.int8, device="cuda:0")
+            print("fwd temp_tensor", int(0.96*available_mem)/1024**2, "MB")
+        except:
+            print("bwd", self.index)
+            print("cached", torch.cuda.memory_reserved() / 1024 ** 2)
+            print("allocated", torch.cuda.memory_allocated() / 1024 ** 2)
+            print("available", available_mem / 1024 ** 2)
+            raise Exception("allocate temp tensor out of cuda memory")
         self.index += 1
 
     def post_fwd_exec(self, module: torch.nn.Module, *args):
         del self.temp_tensor
+        torch.cuda.empty_cache()
 
     def pre_bwd_exec(self, module: torch.nn.Module, input, output):
+
+        for p in module.parameters():
+            self.max_mem -= p.data.numel() * p.data.element_size()
+
         available_mem = self.max_mem - self.mem_info_list[self.index] * 2 * 1024 ** 2
-        self.temp_tensor = torch.empty(int(0.95 * available_mem), dtype=torch.int8, device="cuda:0")
+
+        # if not self.start_bwd:
+        #     available_mem -= (self.mem_info_list[self.index] - self.mem_info_list[self.index-1])
+        #     self.start_bwd = True
+
+        try:
+            self.temp_tensor = torch.empty(int(0.96 * available_mem), dtype=torch.int8, device="cuda:0")
+            print("bwd temp_tensor", int(0.96 * available_mem) / 1024 ** 2, "MB")
+        except:
+            print("bwd", self.index)
+            print("cached", torch.cuda.memory_reserved()/1024**2)
+            print("allocated", torch.cuda.memory_allocated()/1024**2)
+            print("available", available_mem/1024**2)
+            raise Exception("allocate temp tensor out of cuda memory")
         self.index += 1
 
     def post_bwd_exec(self, module: torch.nn.Module, input):
         del self.temp_tensor
+        torch.cuda.empty_cache()
 
     def pre_iter(self):
         pass
@@ -40,6 +69,12 @@ class VerifyOpHook(BaseOpHook):
 
 
 def verification(model_name="", tracer=""):
+
+    cuda_capacity = colo_device_memory_capacity(get_current_device())
+    max_memory = 14 * 1024 * 1024 ** 2
+    fraction = max_memory / cuda_capacity
+    # limit max memory
+    colo_set_process_memory_fraction(fraction)
 
     tracer_res = []
     with open(tracer + "_results/" + model_name + ".txt", "r") as f:
@@ -53,21 +88,17 @@ def verification(model_name="", tracer=""):
     model_builder, data_gen = get_components_func()
     model = model_builder(checkpoint=False).cuda()
     param_mem = torch.cuda.memory_allocated()
+    reserved_mem = torch.cuda.memory_reserved()
 
-    cuda_capacity = colo_device_memory_capacity(get_current_device())
-    max_memory = 40 * 1024 ** 2 + param_mem
-    fraction = max_memory / cuda_capacity
-    # limit max memory
-    colo_set_process_memory_fraction(fraction)
+    max_non_model_data = max_memory - param_mem
 
-    ophook_list = [VerifyOpHook(tracer_res, max_memory-param_mem)]
+    ophook_list = [VerifyOpHook(tracer_res, max_non_model_data)]
     register_ophooks_recursively(model, ophook_list)
 
     data_args = data_gen(device="cuda:0")
     output = model(**data_args)
     loss = torch.mean(output)
-    model.backward(loss)
-
+    loss.backward()
 
 
 if __name__ == '__main__':

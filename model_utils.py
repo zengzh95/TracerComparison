@@ -16,19 +16,19 @@ HF_BATCH_SIZE = 8
 TM_BATCH_SIZE = 64
 SEQ_LENGTH = 16
 
-class SimpleNet(CheckpointModule):
+class SimpleNet(nn.Module):
     """
     In this no-leaf module, it has subordinate nn.modules and a nn.Parameter.
     """
 
     def __init__(self, checkpoint=False) -> None:
-        super().__init__(checkpoint=checkpoint)
-        self.embed = nn.Embedding(2048, 512)
-        self.proj1 = nn.Linear(512, 1024)
-        self.ln1 = nn.LayerNorm(1024)
-        self.proj2 = nn.Linear(1024, 512)
-        self.ln2 = nn.LayerNorm(512)
-        self.classifier = nn.Linear(512, 512)
+        super().__init__()
+        self.embed = nn.Embedding(32768, 16384)
+        self.proj1 = nn.Linear(16384, 8192)
+        self.ln1 = nn.LayerNorm(8192)
+        self.proj2 = nn.Linear(8192, 16384)
+        self.ln2 = nn.LayerNorm(16384)
+        self.classifier = nn.Linear(16384, 16384)
 
     def forward(self, x):
         x = self.embed(x)

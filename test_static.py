@@ -19,7 +19,7 @@ def run_mem_collector_testing(model_name=""):
     print("_non_model_data_cuda_list", len(cuda_non_model_data_list))
     print(mem_collector._non_model_data_cuda_list)
 
-    res_file = open("static_results/" + model_name + ".txt", "w", encoding="utf-8")
+    res_file = open("tracer_results/static" + model_name + ".txt", "w", encoding="utf-8")
     for ddd in cuda_non_model_data_list:
         res_file.write(str(ddd/2) + "\n")
     res_file.close()

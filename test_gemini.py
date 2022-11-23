@@ -67,8 +67,8 @@ def run_mem_gemini_testing(model_name="", iter_num=1):
     print("cuda_non_model_data_list", len(cuda_non_model_data_np_list))
     print(cuda_non_model_data_list)
 
-    res_file = open("gemini_results/" + model_name + ".txt", "w", encoding="utf-8")
-    for ddd in cuda_non_model_data_list:
+    res_file = open("tracer_results/gemini_" + model_name + ".txt", "w", encoding="utf-8")
+    for ddd in cuda_non_model_data_np_list:
         res_file.write(str(ddd) + "\n")
     res_file.close()
 
