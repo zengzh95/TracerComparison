@@ -2,40 +2,26 @@ import torch.nn
 
 from paramOpHook import ParamHook
 from colossalai.tensor.param_op_hook import ParamOpHookManager
-from colossalai.tensor.colo_parameter import ColoParameter
+from colossalai.nn.parallel.data_parallel import _cast_float
 
 
-def _cast_float(args, dtype: torch.dtype):
-    if isinstance(args, torch.Tensor) and torch.is_floating_point(args):
-        args = args.to(dtype)
-    elif isinstance(args, (list, tuple)):
-        args = type(args)(_cast_float(t, dtype) for t in args)
-    elif isinstance(args, dict):
-        args = {k: _cast_float(v, dtype) for k, v in args.items()}
-    return args
-
-
-class ParamWrapper(torch.nn.Module):
+class ParamWrapper():
 
     def __init__(self, module: torch.nn.Module):
         super().__init__()
         self.module = module
         self.param_op_hook = ParamHook()
 
-        for p in module.parameters():
-            assert isinstance(p, ColoParameter)
-            if getattr(p, '_ddp_to_ignore', False):
-                p.data = p.data.half()
-                continue
-            p.data = p.data.half()
-
         self._cast_buffers()
+
+    def __call__(self, *args, **kwargs):
+        return self.forward(*args, **kwargs)
 
     def _pre_forward(self):
         self.param_op_hook.mem_monitor.start()
 
     def forward(self, *args, **kwargs):
-        args, kwargs = _cast_float(args, torch.half), _cast_float(kwargs, torch.half)
+        args, kwargs = _cast_float(args, torch.float), _cast_float(kwargs, torch.float)
         self.module.zero_grad(set_to_none=True)
         self._pre_forward()
         with ParamOpHookManager.use_hooks(self.param_op_hook):
@@ -55,5 +41,3 @@ class ParamWrapper(torch.nn.Module):
     def _cast_buffers(self):
         for buffer in self.module.buffers():
             buffer.data = buffer.cuda()
-            if torch.is_floating_point(buffer):
-                buffer.data = buffer.half()

@@ -39,13 +39,21 @@ class ParamHook(ParamOpHook):
         return comm_volume
 
 
+    def sample_model_data(self, params):
+        data_volume = 0
+        for p in params:
+            data_volume += p.data.numel() * p.data.element_size()
+        if self._training_phase == TrainingPhase.BACKWARD:
+            # add param.grad, actually param.grad is None in this time
+            data_volume *= 2
+        self._model_data_list.append(data_volume)
+
     def pre_op(self, params):
         cuda_volume = self.mem_monitor.finish()
         if len(self._model_data_list):
             self._non_model_data_list.append(cuda_volume - self._model_data_list[-1])
-        comm_volume = self._move_params_to_dev(params, 'cuda')
-        # print("comm_volume", comm_volume/1024**2)
-        self._model_data_list.append(comm_volume)
+        self._move_params_to_dev(params, 'cuda')
+        self.sample_model_data(params)
         self.mem_monitor.start()
 
     def post_op(self, params):
