@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import torch
 from colossalai.utils import get_current_device
 from colossalai.utils.model.colo_init_context import ColoInitContext
 
@@ -17,7 +18,7 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
 
     data_args = data_gen(device=get_current_device())
 
-    model = ParamWrapper(model)
+    model = ParamWrapper(model, dtype_flag=torch.half)
 
     print("model data", torch.cuda.memory_allocated() / 1024**2)
 
@@ -33,9 +34,9 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
     print("cuda_non_model_data_list", len(cuda_non_model_data_list))
     print(model.param_op_hook._non_model_data_list)
 
-    res_file = open("tracer_results/param_wrapper_" + model_name + ".txt", "w", encoding="utf-8")
+    res_file = open("tracer_results/param_wrapper_" + model_name + "_half.txt", "w", encoding="utf-8")
     for ddd in cuda_non_model_data_list:
-        res_file.write(str(ddd/2) + "\n")
+        res_file.write(str(ddd) + "\n")
     res_file.close()
 
 

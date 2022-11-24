@@ -61,7 +61,7 @@ def verification(model_name=""):
     torch.cuda.synchronize()
     ophook_list[0].non_model_list.append(torch.cuda.max_memory_allocated() - ophook_list[0].model_mem)
 
-    verf_list = np.array(ophook_list[0].non_model_list[1:]) / 2 /1024**2
+    verf_list = np.array(ophook_list[0].non_model_list[1:]) /1024**2
     print(verf_list)
     res_file = open("tracer_results/verify_" + model_name + ".txt", "w")
     for val in verf_list:

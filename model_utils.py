@@ -16,19 +16,39 @@ HF_BATCH_SIZE = 8
 TM_BATCH_SIZE = 64
 SEQ_LENGTH = 16
 
+# # model data >> non model data
+# class SimpleNet(nn.Module):
+#
+#     def __init__(self, checkpoint=False) -> None:
+#         super().__init__()
+#         self.embed = nn.Embedding(32768, 16384)
+#         self.proj1 = nn.Linear(16384, 8192)
+#         self.ln1 = nn.LayerNorm(8192)
+#         self.proj2 = nn.Linear(8192, 16384)
+#         self.ln2 = nn.LayerNorm(16384)
+#         self.classifier = nn.Linear(16384, 16384)
+#
+#     def forward(self, x):
+#         x = self.embed(x)
+#         x = self.proj1(x)
+#         x = self.ln1(x)
+#         x = self.proj2(x)
+#         x = self.ln2(x)
+#         x = self.classifier(x)
+#         return x
+
+
+# non model data >> model data
 class SimpleNet(nn.Module):
-    """
-    In this no-leaf module, it has subordinate nn.modules and a nn.Parameter.
-    """
 
     def __init__(self, checkpoint=False) -> None:
         super().__init__()
-        self.embed = nn.Embedding(32768, 16384)
-        self.proj1 = nn.Linear(16384, 8192)
-        self.ln1 = nn.LayerNorm(8192)
-        self.proj2 = nn.Linear(8192, 16384)
-        self.ln2 = nn.LayerNorm(16384)
-        self.classifier = nn.Linear(16384, 16384)
+        self.embed = nn.Embedding(2048, 1024)
+        self.proj1 = nn.Linear(1024, 1024)
+        self.ln1 = nn.LayerNorm(1024)
+        self.proj2 = nn.Linear(1024, 2048)
+        self.ln2 = nn.LayerNorm(2048)
+        self.classifier = nn.Linear(2048, 2048)
 
     def forward(self, x):
         x = self.embed(x)
@@ -346,14 +366,14 @@ def get_albert_components():
 
 @non_distributed_component_funcs.register(name='simplenet')
 def get_simplenet_components():
-    batchSize = 64
-
+    batchSize = 8
+    seq_len = 8
     def simplenet_model_builder(checkpoint=False):
         model = SimpleNet(checkpoint=checkpoint)
         return model
 
     def simplenet_data_gen(device="meta"):
-        input_ids = torch.randint(low=0, high=2048, size=(batchSize, 16), device=device)
+        input_ids = torch.randint(low=0, high=1024, size=(batchSize, seq_len), device=device)
         kwargs = dict(x=input_ids)
         return kwargs
 
