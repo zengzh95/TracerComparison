@@ -18,7 +18,7 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
 
     data_args = data_gen(device=get_current_device())
 
-    model = ParamWrapper(model, dtype_flag=torch.half)
+    model = ParamWrapper(model, dtype=torch.half)
 
     print("model data", torch.cuda.memory_allocated() / 1024**2)
 
