@@ -15,7 +15,8 @@ class ParamWrapper():
         self.param_op_hook = ParamHook()
 
         for p in module.parameters():
-            assert isinstance(p, ColoParameter)
+            # assert isinstance(p, ColoParameter)
+            print(type(p), p.data.shape)
             p.data = p.data.to(dtype)
 
         self._cast_buffers_to_cuda_dtype()
@@ -43,6 +44,11 @@ class ParamWrapper():
         cuda_volume = self.param_op_hook.mem_monitor.finish()
         last_model_data = self.param_op_hook._model_data_list[-1]
         self.param_op_hook._non_model_data_list.append(cuda_volume - last_model_data)
+
+        # if self.param_op_hook.pre_params is not None:
+        #     for p in self.param_op_hook.pre_params:
+        #         assert p.grad is not None
+        #         p.grad = p.grad.to("cpu")
 
     def _cast_buffers_to_cuda_dtype(self):
         for buffer in self.module.buffers():

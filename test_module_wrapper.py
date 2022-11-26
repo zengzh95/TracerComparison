@@ -35,7 +35,6 @@ def run_mem_wrapper_testing(model_name="", iter_num=1):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Wrapper Tracer")
     parser.add_argument("-m_name", type=str, default="simplenet",
-                        choices=["gpt2", "bert", "albert", "simplenet", "alexnet", "vgg16", "resnet18"],
                         help="model name")
     parser.add_argument("-iter_num", type=int, default=1, help="Number of iterations")
     args = parser.parse_args()

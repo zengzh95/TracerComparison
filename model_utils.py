@@ -68,12 +68,9 @@ class NetWithRepeatedlyComputedLayers(CheckpointModule):
 
     def __init__(self, checkpoint=False) -> None:
         super().__init__(checkpoint=checkpoint)
-        # self.fc1 = nn.Linear(1024, 1024)
-        # self.fc2 = nn.Linear(1024, 1024)
-        # self.fc3 = nn.Linear(1024, 512)
-        self.fc1 = nn.LayerNorm(1024)
-        self.fc2 = nn.LayerNorm(1024)
-        self.fc3 = nn.LayerNorm(1024)
+        self.fc1 = nn.Linear(1024, 1024)
+        self.fc2 = nn.Linear(1024, 1024)
+        self.fc3 = nn.Linear(1024, 512)
         self.layers = [self.fc1, self.fc2, self.fc1, self.fc2, self.fc3]
 
     def forward(self, x):
@@ -426,3 +423,51 @@ def get_resnet18_components():
         return kwargs
 
     return resnet18_model_builder, resnet18_data_gen
+
+
+@non_distributed_component_funcs.register(name='no_leaf_model')
+def get_no_leaf_module_components():
+    batchSize = 64
+
+    def no_leaf_model_builder(checkpoint=False):
+        model = NoLeafModule(checkpoint=checkpoint)
+        return model
+
+    def no_leaf_module_data_gen(device="meta"):
+        data = torch.rand(int(batchSize), 1024, device=device)
+        kwargs = dict(x=data)
+        return kwargs
+
+    return no_leaf_model_builder, no_leaf_module_data_gen
+
+
+@non_distributed_component_funcs.register(name='repeated_computed_model')
+def get_repeated_computed_components():
+    batchSize = 64
+
+    def repeated_computed_model_builder(checkpoint=False):
+        model = NetWithRepeatedlyComputedLayers(checkpoint=checkpoint)
+        return model
+
+    def repeated_computed_data_gen(device="meta"):
+        data = torch.rand(int(batchSize), 1024, device=device)
+        kwargs = dict(x=data)
+        return kwargs
+
+    return repeated_computed_model_builder, repeated_computed_data_gen
+
+
+@non_distributed_component_funcs.register(name='nested_net')
+def get_nested_net_components():
+    batchSize = 64
+
+    def nested_model_builder(checkpoint=False):
+        model = NestedNet(checkpoint=checkpoint)
+        return model
+
+    def neted_net_data_gen(device="meta"):
+        data = torch.rand(int(batchSize), 1024, device=device)
+        kwargs = dict(x=data)
+        return kwargs
+
+    return nested_model_builder, neted_net_data_gen

@@ -104,7 +104,6 @@ def verification(model_name="", tracer=""):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="verification")
     parser.add_argument("-m_name", type=str, default="simplenet",
-                        choices=["gpt2", "bert", "albert", "simplenet", "alexnet", "vgg16", "resnet18"],
                         help="model name")
     parser.add_argument("-tracer", type=str, default="static", choices=["static", "module_wrapper", "param_wrapper", "gemini"])
     args = parser.parse_args()

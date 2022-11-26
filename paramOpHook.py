@@ -22,6 +22,7 @@ class ParamHook(ParamOpHook):
         self.mem_monitor = SyncCudaMemoryMonitor()
         self._non_model_data_list = []
         self._model_data_list = []
+        self.pre_params = None
 
     def _move_params_to_dev(self, params, dev: str) -> int:
 
@@ -49,11 +50,25 @@ class ParamHook(ParamOpHook):
         self._model_data_list.append(data_volume)
 
     def pre_op(self, params):
+
+        for p in params:
+            print(p.data.shape)
+        print("*****************")
+
         cuda_volume = self.mem_monitor.finish()
         if len(self._model_data_list):
             self._non_model_data_list.append(cuda_volume - self._model_data_list[-1])
+        # if self._training_phase == TrainingPhase.FORWARD:
         self._move_params_to_dev(params, 'cuda')
         self.sample_model_data(params)
+
+        # if self.pre_params is not None:
+        #     for p in self.pre_params:
+        #         assert p.grad is not None
+        #         p.grad = p.grad.to("cpu")
+        # if self._training_phase == TrainingPhase.BACKWARD:
+        #     self.pre_params = params
+
         self.mem_monitor.start()
 
     def post_op(self, params):

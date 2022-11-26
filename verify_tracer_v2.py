@@ -72,7 +72,6 @@ def verification(model_name=""):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="verification")
     parser.add_argument("-m_name", type=str, default="simplenet",
-                        choices=["gpt2", "bert", "albert", "simplenet", "alexnet", "vgg16", "resnet18"],
                         help="model name")
     args = parser.parse_args()
     verification(args.m_name)
