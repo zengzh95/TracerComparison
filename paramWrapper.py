@@ -16,7 +16,7 @@ class ParamWrapper():
 
         for p in module.parameters():
             # assert isinstance(p, ColoParameter)
-            print(type(p), p.data.shape)
+            # print(type(p), p.data.shape)
             p.data = p.data.to(dtype)
 
         self._cast_buffers_to_cuda_dtype()

@@ -51,15 +51,18 @@ class ParamHook(ParamOpHook):
 
     def pre_op(self, params):
 
-        for p in params:
-            print(p.data.shape)
-        print("*****************")
+        # for p in params:
+        #     print("pre", p.data.shape, self._training_phase)
+        # print("*****************")
+
+        if self.pre_params is not None:
+            self._move_params_to_dev(self.pre_params, "cpu")
 
         cuda_volume = self.mem_monitor.finish()
         if len(self._model_data_list):
             self._non_model_data_list.append(cuda_volume - self._model_data_list[-1])
-        # if self._training_phase == TrainingPhase.FORWARD:
-        self._move_params_to_dev(params, 'cuda')
+        if self._training_phase == TrainingPhase.FORWARD:
+            self._move_params_to_dev(params, 'cuda')
         self.sample_model_data(params)
 
         # if self.pre_params is not None:
@@ -72,7 +75,13 @@ class ParamHook(ParamOpHook):
         self.mem_monitor.start()
 
     def post_op(self, params):
-        self._move_params_to_dev(params, 'cpu')
+        self.pre_params = params
+
+        # for p in params:
+        #     print("post", p.data.shape, self._training_phase)
+        # print("*****************")
+        #
+        # self._move_params_to_dev(params, 'cpu')
 
     def pre_forward(self, params: List[torch.Tensor]) -> None:
         self.pre_op(params)

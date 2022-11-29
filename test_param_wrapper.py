@@ -13,7 +13,9 @@ class SaveOnCpu(torch.autograd.graph.save_on_cpu):
     def __init__(self):
         super().__init__()
         def pack_to_cpu(tensor):
+            print("pack", tensor.shape, type(tensor))
             if isinstance(tensor, torch.Tensor) and (not isinstance(tensor, ColoTensor)):
+
                 if tensor.device.type != "cpu":
                     tensor = tensor.to("cpu")
             return tensor
@@ -46,8 +48,8 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
     #     buff.data = buff.data.cuda()
 
     for iter in range(iter_num):
-        # with SaveOnCpu():
-        output = model(**data_args)
+        with SaveOnCpu():
+            output = model(**data_args)
         loss = torch.mean(output)
         model.backward(loss)
 
@@ -55,10 +57,10 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
     print("cuda_non_model_data_list", len(cuda_non_model_data_list))
     print(model.param_op_hook._non_model_data_list)
 
-    # res_file = open("tracer_results/param_wrapper_" + model_name + ".txt", "w", encoding="utf-8")
-    # for ddd in cuda_non_model_data_list:
-    #     res_file.write(str(ddd) + "\n")
-    # res_file.close()
+    res_file = open("tracer_results/param_wrapper_" + model_name + ".txt", "w", encoding="utf-8")
+    for ddd in cuda_non_model_data_list:
+        res_file.write(str(ddd) + "\n")
+    res_file.close()
 
 
 if __name__ == '__main__':
