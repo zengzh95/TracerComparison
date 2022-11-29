@@ -1,7 +1,6 @@
 
 import torch
 import torch.nn as nn
-from colossalai.gemini.memory_tracer import SyncCudaMemoryMonitor
 from colossalai.tensor.param_op_hook import ParamOpHook
 from colossalai.tensor.param_op_hook import ParamOpHookManager
 from colossalai.utils.model.colo_init_context import ColoInitContext
@@ -9,7 +8,6 @@ from contextlib import contextmanager
 from enum import Enum
 from functools import partial
 from typing import List
-import sys
 
 def is_storage_empty(tensor: torch.Tensor) -> bool:
     return tensor.storage().size() == 0
@@ -44,9 +42,7 @@ class MyParamHook(ParamOpHook):
             elif dev == "cpu":
                 free_storage(p.data)
 
-            # comm_volume += p.data.numel() * p.data.element_size()
         return comm_volume
-
 
     def pre_op(self, params):
         if self._training_phase == TrainingPhase.BACKWARD:
@@ -58,9 +54,6 @@ class MyParamHook(ParamOpHook):
         if self._training_phase == TrainingPhase.BACKWARD:
             print("post_op", torch.cuda.memory_allocated()/1024**2, torch.cuda.max_memory_allocated()/1024**2)
         self._move_params_to_dev(params, 'cpu')
-        # if self._training_phase == TrainingPhase.BACKWARD:
-        #     print("post op", torch.cuda.memory_allocated()/1024**2)
-        # torch.cuda.reset_peak_memory_stats()
 
     def pre_forward(self, params: List[torch.Tensor]) -> None:
         self.pre_op(params)
@@ -99,12 +92,11 @@ class MyParamWrapper():
                 p.register_hook(partial(self.grad_handle, p))
 
     def grad_handle(self, p, grad):
-        pass
-        # print("bef move grad", torch.cuda.memory_allocated()/1024**2)
-        # if p.grad is not None:
-        #     print("moving")
-        #     p.grad = p.grad.to("cpu")
-        # print("aft move grad", torch.cuda.memory_allocated()/1024**2)
+        print("bef free grad", torch.cuda.memory_allocated()/1024**2)
+        if grad is not None:
+            print("free grad")
+            free_storage(grad)
+        print("aft free grad", torch.cuda.memory_allocated()/1024**2)
 
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
@@ -134,6 +126,7 @@ class MyModel(torch.nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(1024, 1024, bias=False)
         self.fc2 = nn.Linear(1024, 1024, bias=False)
+        # self.fc3 = nn.Linear(1024, 1024, bias=False)
 
     def forward(self, x):
         out = self.fc1(x)
@@ -144,8 +137,6 @@ class MyModel(torch.nn.Module):
         print("aft fc2", torch.cuda.memory_allocated() / 1024**2)
         out = self.fc2(out)
         print("aft fc2", torch.cuda.memory_allocated() / 1024 ** 2)
-        # print(sys.getrefcount(self.fc1), sys.getrefcount(self.fc1.weight), sys.getrefcount(self.fc1.weight.data),
-        #       sys.getrefcount(self.fc1.weight.data.storage()))
         return out
 
 
