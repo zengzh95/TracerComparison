@@ -46,17 +46,6 @@ class MyParamHook(ParamOpHook):
                 p.data = p.temp_data
                 del p.temp_data
 
-                # if dev == "cuda":
-                #     p.data = torch.randn(p.data.shape, device="cuda")
-                # elif dev == "cpu":
-                #     # p.temp = p.data.to(dev)
-                #     # p.temp = p.data.storage().cpu()
-                #     p.temp = torch.randn(p.data.shape, device="cpu")
-                #     free_storage(p.data)
-                #     p.data = p.temp
-                #     del p.temp
-                # print(p.data)
-
                 comm_volume += p.data.numel() * p.data.element_size()
         return comm_volume
 
