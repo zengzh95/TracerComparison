@@ -1,7 +1,6 @@
 import torch.nn
 
-from colossalai.tensor.colo_parameter import ColoParameter
-from paramOpHook import ParamHook
+from paramOpHook import ParamHook, MemInfo, GradHook
 from colossalai.tensor.param_op_hook import ParamOpHookManager
 from colossalai.nn.parallel.data_parallel import _cast_float
 
@@ -12,7 +11,9 @@ class ParamWrapper():
         super().__init__()
         self.module = module
         self.dtype = dtype
-        self.param_op_hook = ParamHook()
+        self.param_op_hook = ParamHook(dtype)
+        self.grad_hook = GradHook(module)
+        self.cpu_param_data_dict = {}
 
         for p in module.parameters():
             # assert isinstance(p, ColoParameter)
@@ -24,7 +25,24 @@ class ParamWrapper():
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
+    def _save_param_data_on_cpu(self):
+        for p in self.module.parameters():
+            print("save", type(p.data), p.data.shape, p.requires_grad)
+            # self.cpu_param_data_dict[p] = torch.empty(p.data.shape, dtype=self.dtype, device="cpu",
+            #                                           requires_grad=p.data.requires_grad)
+            self.cpu_param_data_dict[p] = torch.empty(p.data.shape, dtype=self.dtype, device="cpu")
+            self.cpu_param_data_dict[p].copy_(p.data)
+
+    def _restore_param_data(self):
+        for p in self.module.parameters():
+            print("restore", type(p), type(p.data), p.data.shape)
+            p.data = torch.empty(p.data.shape, dtype=self.dtype, device="cpu", requires_grad=p.data.requires_grad)
+            p.data.copy_(self.cpu_param_data_dict[p])
+        self.cpu_param_data_dict.clear()
+
     def _pre_forward(self):
+        self._clear_mem_info()
+        self._save_param_data_on_cpu()
         self.param_op_hook.mem_monitor.start()
 
     def forward(self, *args, **kwargs):
@@ -42,13 +60,17 @@ class ParamWrapper():
 
     def _post_backward(self):
         cuda_volume = self.param_op_hook.mem_monitor.finish()
-        last_model_data = self.param_op_hook._model_data_list[-1]
-        self.param_op_hook._non_model_data_list.append(cuda_volume - last_model_data)
+        last_model_data = MemInfo.model_data_list[-1]
+        MemInfo.non_model_data_list.append(cuda_volume - last_model_data)
+        self.grad_hook.remove_grad_hook()
+        self._restore_param_data()
 
-        # if self.param_op_hook.pre_params is not None:
-        #     for p in self.param_op_hook.pre_params:
-        #         assert p.grad is not None
-        #         p.grad = p.grad.to("cpu")
+    def _clear_mem_info(self):
+        MemInfo.model_data_list.clear()
+        MemInfo.non_model_data_list.clear()
+        MemInfo.unreleased_grad_flag.clear()
+        MemInfo.unreleased_grad_volume = 0
+
 
     def _cast_buffers_to_cuda_dtype(self):
         for buffer in self.module.buffers():

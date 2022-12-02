@@ -150,23 +150,16 @@ class GPTLMModel(nn.Module):
 
 
 class ToyModel(nn.Module):
-    def __init__(self):
+    def __init__(self, checkpoint=False):
         super().__init__()
-        self.fc1 = nn.Linear(512, 1024, bias=False)
-        self.fc2 = nn.Linear(1024, 2048, bias=False)
-        self.fc3 = nn.Linear(2048, 768, bias=False)
-
-        self.fc4 = nn.ModuleList()
-        for iii in range(5):
-            self.fc4.append(nn.Linear(768, 768))
+        self.fc1 = nn.Linear(1024, 1024, bias=True)
+        self.fc2 = nn.Linear(1024, 1024, bias=True)
+        self.fc3 = nn.Linear(1024, 1024, bias=True)
 
     def forward(self, x):
         out1 = self.fc1(x)
         out2 = self.fc2(out1)
         out3 = self.fc3(out2)
-
-        for mmm in self.fc4:
-            out3 = mmm(out3)
         return out3
 
 
@@ -443,7 +436,7 @@ def get_no_leaf_module_components():
 
 @non_distributed_component_funcs.register(name='repeated_computed_model')
 def get_repeated_computed_components():
-    batchSize = 64
+    batchSize = 8
 
     def repeated_computed_model_builder(checkpoint=False):
         model = NetWithRepeatedlyComputedLayers(checkpoint=checkpoint)
@@ -471,3 +464,19 @@ def get_nested_net_components():
         return kwargs
 
     return nested_model_builder, neted_net_data_gen
+
+
+@non_distributed_component_funcs.register(name='toy_model')
+def get_toy_model_components():
+    batchSize = 8
+
+    def toy_model_builder(checkpoint=False):
+        model = ToyModel(checkpoint=checkpoint)
+        return model
+
+    def toy_model_data_gen(device="meta"):
+        data = torch.rand(int(batchSize), 1024, device=device)
+        kwargs = dict(x=data)
+        return kwargs
+
+    return toy_model_builder, toy_model_data_gen

@@ -2,14 +2,15 @@
 import torch
 import torch.nn as nn
 from colossalai.gemini.memory_tracer import SyncCudaMemoryMonitor
-from colossalai.gemini.chunk.chunk import free_storage, alloc_storage
 from colossalai.tensor.param_op_hook import ParamOpHook
 from colossalai.tensor.param_op_hook import ParamOpHookManager
 from colossalai.utils.model.colo_init_context import ColoInitContext
+from colossalai.gemini.chunk.chunk import free_storage, alloc_storage
 from contextlib import contextmanager
 from enum import Enum
 from functools import partial
 from typing import List
+import sys
 
 
 class TrainingPhase(Enum):
@@ -19,46 +20,9 @@ class TrainingPhase(Enum):
 
 class MyParamHook(ParamOpHook):
 
-    def __init__(self, dtype: torch.dtype=torch.float) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self._training_phase = TrainingPhase.FORWARD
-        self.dtype = dtype
-
-    def _free_cuda_params(self, params):
-        for p in params:
-            if p.data.device.type == "cpu":
-                raise NotImplementedError("Only free cuda memory")
-            p.cpu_data = torch.empty(p.data.shape, dtype=self.dtype, device="cpu")
-            p.cpu_data.copy_(p.data)
-            free_storage(p.data)
-
-    def _allocate_params_on_cuda(self, params):
-        for p in params:
-            cur_dev = p.data.device.type
-            if cur_dev == "cpu":
-                if p.grad is not None and p.grad.device.type == "cpu":
-                    raise NotImplementedError("Only run in forward propagation")
-                p.cpu_data = p.data
-                p.data = torch.empty(p.data.shape, device="cuda", dtype=self.dtype, requires_grad=p.data.requires_grad)
-                p.data.copy_(p.cpu_data)
-            elif cur_dev == "cuda":
-                alloc_storage(p.data)
-                p.data.copy_(p.cpu_data)
-            free_storage(p.cpu_data)
-
-    def _move_params_to_dev(self, params, dev: str) -> int:
-        assert isinstance(dev, str), f"device should be a str not torch.device"
-        comm_volume = 0
-
-        for p in params:
-            p.temp_data = p.data
-            p.data = torch.empty(p.data.shape, device=dev, dtype=p.data.dtype,
-                        requires_grad=p.data.requires_grad)
-            p.data.copy_(p.temp_data)
-            free_storage(p.temp_data)
-            del p.temp_data
-
-        return comm_volume
 
 
     def pre_op(self, params):
@@ -66,19 +30,9 @@ class MyParamHook(ParamOpHook):
             print("pre_op", torch.cuda.memory_allocated()/1024**2, torch.cuda.max_memory_allocated()/1024**2)
             torch.cuda.reset_peak_memory_stats()
 
-        self._allocate_params_on_cuda(params)
-        # self._move_params_to_dev(params, "cuda")
-
     def post_op(self, params):
         if self._training_phase == TrainingPhase.BACKWARD:
             print("post_op", torch.cuda.memory_allocated()/1024**2, torch.cuda.max_memory_allocated()/1024**2)
-
-        self._free_cuda_params(params)
-        # self._move_params_to_dev(params, "cpu")
-
-        # if self._training_phase == TrainingPhase.BACKWARD:
-        #     print("post op", torch.cuda.memory_allocated()/1024**2)
-        # torch.cuda.reset_peak_memory_stats()
 
     def pre_forward(self, params: List[torch.Tensor]) -> None:
         self.pre_op(params)
