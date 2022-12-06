@@ -26,7 +26,6 @@ class GradHook():
     def __init__(self, module: torch.nn.Module):
         self.module = module
         self.grad_hook_list = []
-        self.register_grad_hook()
 
     def grad_handle(self, p, grad):
         assert MemInfo.unreleased_grad_flag[p]
@@ -48,11 +47,10 @@ class GradHook():
 
 class ParamHook(ParamOpHook):
 
-    def __init__(self, dtype: torch.dtype=torch.float) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self._training_phase = TrainingPhase.FORWARD
         self.mem_monitor = SyncCudaMemoryMonitor()
-        self.dtype = dtype
 
     def _move_params_to_dev(self, params, dev: str) -> int:
 
@@ -86,7 +84,7 @@ class ParamHook(ParamOpHook):
                 if p.grad is not None and p.grad.device.type == "cpu":
                     raise NotImplementedError("Only run in forward propagation")
                 # p.cpu_data = p.data
-                p.data = torch.empty(p.data.shape, device="cuda", dtype=self.dtype, requires_grad=p.data.requires_grad)
+                p.data = torch.empty(p.data.shape, device="cuda", dtype=p.data.dtype, requires_grad=p.data.requires_grad)
                 # p.data.copy_(p.cpu_data)
             elif cur_dev == "cuda":
                 alloc_storage(p.data)

@@ -354,6 +354,77 @@ def get_albert_components():
     return albert_model_builder, albert_data_gen
 
 
+@non_distributed_component_funcs.register(name='bart')
+def get_bart_components():
+    seq_len = 16
+    batchSize = 8
+
+    def bart_model_builder(checkpoint=False):
+        model = MyBart()
+        return model
+
+    def bart_data_gen(device="meta"):
+        input_ids = torch.zeros((batchSize, seq_len), dtype=torch.int64, device=device)
+        attention_mask = torch.zeros((batchSize, seq_len), dtype=torch.int64, device=device)
+        kwargs = dict(input_ids=input_ids, attention_mask=attention_mask)
+        return kwargs
+
+    return bart_model_builder, bart_data_gen
+
+
+@non_distributed_component_funcs.register(name='xlnet')
+def get_xlnet_components():
+    seq_len = 16
+    batchSize = 8
+
+    def xlnet_model_builder(checkpoint=False):
+        model = MyXL()
+        return model
+
+    def xlnet_data_gen(device="meta"):
+        input_ids = torch.zeros((batchSize, seq_len), dtype=torch.int64, device=device)
+        attention_mask = torch.zeros((batchSize, seq_len), dtype=torch.int64, device=device)
+        kwargs = dict(input_ids=input_ids, attention_mask=attention_mask)
+        return kwargs
+
+    return xlnet_model_builder, xlnet_data_gen
+
+
+@non_distributed_component_funcs.register(name='t5')
+def get_t5_components():
+    seq_len = 16
+    batchSize = 8
+
+    def t5_model_builder(checkpoint=False):
+        model = MyT5Encoder()
+        return model
+
+    def t5_data_gen(device="meta"):
+        input_ids = torch.zeros((batchSize, seq_len), dtype=torch.int64, device=device)
+        kwargs = dict(input_ids=input_ids)
+        return kwargs
+
+    return t5_model_builder, t5_data_gen
+
+
+@non_distributed_component_funcs.register(name='opt')
+def get_opt_components():
+    seq_len = 16
+    batchSize = 8
+
+    def opt_model_builder(checkpoint=False):
+        model = MyOPT()
+        return model
+
+    def opt_data_gen(device="meta"):
+        input_ids = torch.zeros((batchSize, seq_len), dtype=torch.int64, device=device)
+        attention_mask = torch.zeros((batchSize, seq_len), dtype=torch.int64, device=device)
+        kwargs = dict(input_ids=input_ids, attention_mask=attention_mask)
+        return kwargs
+
+    return opt_model_builder, opt_data_gen
+
+
 @non_distributed_component_funcs.register(name='simplenet')
 def get_simplenet_components():
     batchSize = 8

@@ -21,65 +21,25 @@ class TrainingPhase(Enum):
     BACKWARD = 1
 
 
-class MemInfo():
-    model_data_list = []
-    non_model_data_list = []
-    unreleased_grad_flag = {}
-    temp_grad_volume = 0
-
-
 
 class MyParamHook(ParamOpHook):
 
-    def __init__(self, model_data_mem: int=0) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.model_data_mem = model_data_mem
         self._training_phase = TrainingPhase.FORWARD
         self.mem_monitor = SyncCudaMemoryMonitor()
 
-    def sample_model_data(self, params):
-        if self._training_phase == TrainingPhase.FORWARD:
-            MemInfo.model_data_list.append(self.model_data_mem)
-        elif self._training_phase == TrainingPhase.BACKWARD:
-            data_volume = self.model_data_mem
-            for p in params:
-                cur_param_data_volume = p.data.numel() * p.data.element_size()
-                if p.requires_grad:
-                    # add param.grad, actually param.grad is None in this time
-                    data_volume += cur_param_data_volume
-                    if not MemInfo.unreleased_grad_flag[p]:
-                        self.model_data_mem += cur_param_data_volume
-                        MemInfo.unreleased_grad_flag[p] = True
-                    else:
-                        MemInfo.temp_grad_volume += cur_param_data_volume
-            MemInfo.model_data_list.append(data_volume)
-
-
     def pre_op(self, params):
         cuda_volume = self.mem_monitor.finish()
-        if len(MemInfo.model_data_list):
-            if self._training_phase == TrainingPhase.BACKWARD and MemInfo.temp_grad_volume > 0:
-                max_non_model_data = max(MemInfo.non_model_data_list[-1],
-                                         cuda_volume - MemInfo.temp_grad_volume - MemInfo.model_data_list[-1],
-                                         torch.cuda.memory_allocated() - self.model_data_mem)
-                # print("pre", MemInfo.non_model_data_list[-1] / 1024 ** 2,
-                #       (cuda_volume - MemInfo.temp_grad_volume - MemInfo.model_data_list[-1]) / 1024 ** 2,
-                #       (torch.cuda.memory_allocated() - self.model_data_mem) / 1024 ** 2)
-                MemInfo.non_model_data_list[-1] = max_non_model_data
-                MemInfo.temp_grad_volume = 0
-            else:
-                MemInfo.non_model_data_list.append(cuda_volume - MemInfo.model_data_list[-1])
-        self.sample_model_data(params)
+        if self._training_phase == TrainingPhase.BACKWARD:
+            print("post---pre", torch.cuda.memory_allocated()/1024**2, cuda_volume/1024**2)
         self.mem_monitor.start()
 
     def post_op(self, params):
-        if self._training_phase == TrainingPhase.BACKWARD and MemInfo.temp_grad_volume > 0:
+        if self._training_phase == TrainingPhase.BACKWARD:
             cuda_volume = self.mem_monitor.finish()
-            MemInfo.non_model_data_list.append(cuda_volume - MemInfo.model_data_list[-1])
-            # print("post", cuda_volume/1024**2, (cuda_volume - MemInfo.model_data_list[-1])/1024**2)
+            print("pre---post", torch.cuda.memory_allocated()/1024**2, cuda_volume/1024**2)
             self.mem_monitor.start()
-
-
 
     def pre_forward(self, params: List[torch.Tensor]) -> None:
         self.pre_op(params)
@@ -113,7 +73,7 @@ class MyParamWrapper():
         self.module = module
         self.dtype = dtype
         self.model_mem = model_mem
-        self.param_op_hook = MyParamHook(model_data_mem=model_mem)
+        self.param_op_hook = MyParamHook()
 
         for p in module.parameters():
             p.data = p.data.to(dtype)
@@ -125,10 +85,6 @@ class MyParamWrapper():
         return self.forward(*args, **kwargs)
 
     def _pre_forward(self):
-        self._clear_cuda_mem_info()
-        for p in self.module.parameters():
-            if p.requires_grad:
-                MemInfo.unreleased_grad_flag[p] = False
         self.param_op_hook.mem_monitor.start()
 
     def forward(self, *args, **kwargs):
@@ -146,22 +102,8 @@ class MyParamWrapper():
 
     def _post_backward(self):
         cuda_volume = self.param_op_hook.mem_monitor.finish()
-        last_model_data = MemInfo.model_data_list[-1]
+        print("aft bwd", torch.cuda.memory_allocated()/1024**2, cuda_volume/1024**2)
 
-        if MemInfo.temp_grad_volume > 0:
-            max_non_model_data = max(MemInfo.non_model_data_list[-1],
-                                     cuda_volume - MemInfo.temp_grad_volume - MemInfo.model_data_list[-1],
-                                     torch.cuda.memory_allocated() - self.param_op_hook.model_data_mem)
-            MemInfo.non_model_data_list[-1] = max_non_model_data
-            MemInfo.temp_grad_volume = 0
-        else:
-            MemInfo.non_model_data_list.append(cuda_volume - last_model_data)
-
-    def _clear_cuda_mem_info(self):
-        MemInfo.model_data_list.clear()
-        MemInfo.non_model_data_list.clear()
-        MemInfo.unreleased_grad_flag.clear()
-        MemInfo.temp_grad_volume = 0
 
     def _cast_buffers_to_cuda_dtype(self):
         for buffer in self.module.buffers():
@@ -177,7 +119,7 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
     model_builder, data_gen = get_components_func()
 
     with ColoInitContext(device=torch.device('cuda')):
-        model = model_builder(checkpoint=True)
+        model = model_builder(checkpoint=False)
     mem_model_data = torch.cuda.memory_allocated()
 
     data_args = data_gen(device=get_current_device())
@@ -191,14 +133,6 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
         loss = torch.mean(output)
         model.backward(loss)
 
-    cuda_non_model_data_list = np.array(MemInfo.non_model_data_list) / 1024 ** 2
-    print("cuda_non_model_data_list", len(cuda_non_model_data_list))
-    print(MemInfo.non_model_data_list)
-
-    res_file = open("tracer_results/verify_v3_" + model_name + ".txt", "w", encoding="utf-8")
-    for ddd in cuda_non_model_data_list:
-        res_file.write(str(ddd) + "\n")
-    res_file.close()
 
 
 if __name__ == '__main__':

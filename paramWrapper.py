@@ -11,7 +11,7 @@ class ParamWrapper():
         super().__init__()
         self.module = module
         self.dtype = dtype
-        self.param_op_hook = ParamHook(dtype)
+        self.param_op_hook = ParamHook()
         self.grad_hook = GradHook(module)
         self.cpu_param_data_dict = {}
 
@@ -27,7 +27,7 @@ class ParamWrapper():
 
     def _save_param_data_on_cpu(self):
         for p in self.module.parameters():
-            print("save", type(p.data), p.data.shape, p.requires_grad)
+            # print("save", type(p.data), p.data.shape, p.requires_grad)
             # self.cpu_param_data_dict[p] = torch.empty(p.data.shape, dtype=self.dtype, device="cpu",
             #                                           requires_grad=p.data.requires_grad)
             self.cpu_param_data_dict[p] = torch.empty(p.data.shape, dtype=self.dtype, device="cpu")
@@ -35,7 +35,7 @@ class ParamWrapper():
 
     def _restore_param_data(self):
         for p in self.module.parameters():
-            print("restore", type(p), type(p.data), p.data.shape)
+            # print("restore", type(p), type(p.data), p.data.shape)
             p.data = torch.empty(p.data.shape, dtype=self.dtype, device="cpu", requires_grad=p.data.requires_grad)
             p.data.copy_(self.cpu_param_data_dict[p])
         self.cpu_param_data_dict.clear()
@@ -43,6 +43,7 @@ class ParamWrapper():
     def _pre_forward(self):
         self._clear_mem_info()
         self._save_param_data_on_cpu()
+        self.grad_hook.register_grad_hook()
         self.param_op_hook.mem_monitor.start()
 
     def forward(self, *args, **kwargs):

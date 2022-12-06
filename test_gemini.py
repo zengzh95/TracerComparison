@@ -37,7 +37,7 @@ def run_mem_gemini_testing(model_name="", iter_num=1):
     data_args = data_gen(device=get_current_device())
 
     with ColoInitContext(device=get_current_device()):
-        model = model_builder(checkpoint=False)
+        model = model_builder(checkpoint=True)
 
     numel = sum([p.numel() for p in model.parameters()])
     logger.info(f'Model numel: {numel}', ranks=[0])

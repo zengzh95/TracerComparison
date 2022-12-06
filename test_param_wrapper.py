@@ -37,7 +37,7 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
     model_builder, data_gen = get_components_func()
 
     with ColoInitContext(device=torch.device('cpu')):
-        model = model_builder(checkpoint=False)
+        model = model_builder(checkpoint=True)
 
     data_args = data_gen(device=get_current_device())
 

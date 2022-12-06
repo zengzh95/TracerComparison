@@ -28,24 +28,24 @@ for line in r_file:
         continue
     res_gemini.append(float(line))
 r_file.close()
-#
-# res_module_wrapper = []
-# r_file = open("tracer_results/module_wrapper_" + model_name + ".txt", "r")
-# for line in r_file:
-#     line = line.strip()
-#     if line == "":
-#         continue
-#     res_module_wrapper.append(float(line))
-# r_file.close()
-#
-# res_verify = []
-# r_file = open("tracer_results/verify_" + model_name + ".txt", "r")
-# for line in r_file:
-#     line = line.strip()
-#     if line == "":
-#         continue
-#     res_verify.append(float(line))
-# r_file.close()
+
+res_cai_wrapper = []
+r_file = open("tracer_results/cai_tracer_" + model_name + ".txt", "r")
+for line in r_file:
+    line = line.strip()
+    if line == "":
+        continue
+    res_cai_wrapper.append(float(line))
+r_file.close()
+
+res_verify = []
+r_file = open("tracer_results/verify_v3_" + model_name + ".txt", "r")
+for line in r_file:
+    line = line.strip()
+    if line == "":
+        continue
+    res_verify.append(float(line))
+r_file.close()
 
 res_param_wrapper = []
 r_file = open("tracer_results/param_wrapper_" + model_name + ".txt", "r")
@@ -77,8 +77,8 @@ r_file.close()
 
 # res_static = np.array(res_static)
 res_gemini = np.array(res_gemini)
-# res_module_wrapper = np.array(res_module_wrapper)
-# res_verify = np.array(res_verify)
+res_cai_wrapper = np.array(res_cai_wrapper)
+res_verify = np.array(res_verify)
 res_param_wrapper = np.array(res_param_wrapper)
 
 # res_param_wrapper_float = np.array(res_param_wrapper_float)
@@ -88,18 +88,18 @@ res_param_wrapper = np.array(res_param_wrapper)
 
 # x1 = np.arange(0, len(res_static))
 x2 = np.arange(0, len(res_gemini))
-# x3 = np.arange(0, len(res_module_wrapper))
-# x4 = np.arange(0, len(res_verify))
+x3 = np.arange(0, len(res_cai_wrapper))
+x4 = np.arange(0, len(res_verify))
 x5 = np.arange(0, len(res_param_wrapper))
 
 # x6 = np.arange(0, len(res_param_wrapper_float))
 # x7 = np.arange(0, len(res_param_wrapper_half))
 
 # l1 = plt.plot(x1, res_static, "r-", label="static")
-l2 = plt.plot(x2, res_gemini, "b-", label="gemini")
-# l3 = plt.plot(x3, res_module_wrapper, "y-", label="moduleWra")
+# l2 = plt.plot(x2, res_gemini, "b-", label="gemini")
+l3 = plt.plot(x3, res_cai_wrapper, "y-", label="moduleWra")
 l5 = plt.plot(x5, res_param_wrapper, "g-", label="paramWra")
-# l4 = plt.plot(x4, res_verify, "c--", label="verify")
+l4 = plt.plot(x4, res_verify, "r--", label="verify")
 
 # l6 = plt.plot(x6, res_param_wrapper_float, "r-", label="float")
 # l7 = plt.plot(x7, res_param_wrapper_half, "b-", label="half")
@@ -110,5 +110,5 @@ plt.title(image_name)
 plt.xlabel("Layers")
 plt.ylabel("Peak Memory Size (MB)")
 plt.legend()
-plt.savefig("C:\\Users\\Lenovo\\Desktop\\comparison_12_1\\" + image_name + ".jpg")
+plt.savefig("C:\\Users\\Lenovo\\Desktop\\comparison_12_6\\" + image_name + ".jpg")
 plt.show()
