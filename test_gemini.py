@@ -62,7 +62,7 @@ def run_mem_gemini_testing(model_name="", iter_num=1):
         loss = torch.mean(output)
         model.backward(loss)
 
-    cuda_non_model_data_list = model.gemini_manager._mem_stats_collector.non_model_data_list('cuda') 
+    cuda_non_model_data_list = model.gemini_manager._mem_stats_collector._memstats.non_model_data_list('cuda') 
     cuda_non_model_data_np_list = np.array(cuda_non_model_data_list) / 1024 ** 2 
     print("cuda_non_model_data_list", len(cuda_non_model_data_np_list))
     print(cuda_non_model_data_list)
