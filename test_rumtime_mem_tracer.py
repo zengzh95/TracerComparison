@@ -5,8 +5,7 @@ from colossalai.utils import get_current_device
 from colossalai.utils.model.colo_init_context import ColoInitContext
 from colossalai.tensor.colo_tensor import ColoTensor
 
-from paramWrapper import ParamWrapper
-from paramOpHook import MemInfo
+from colossalai.gemini.memory_tracer.runtime_mem_tracer import RuntimeMemTracer
 from model_utils import *
 
 
@@ -41,7 +40,7 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
 
     data_args = data_gen(device=get_current_device())
 
-    model = ParamWrapper(model, dtype=torch.float)
+    model = RuntimeMemTracer(model, dtype=torch.float)
 
     print("model data", torch.cuda.memory_allocated() / 1024**2)
 
@@ -54,9 +53,9 @@ def run_param_wrapper_testing(model_name="", iter_num=1):
         loss = torch.mean(output)
         model.backward(loss)
 
-    cuda_non_model_data_list = np.array(MemInfo.non_model_data_list) / 1024 ** 2
+    cuda_non_model_data_list = np.array(model._memstats._non_model_data_cuda_list) / 1024 ** 2
     print("cuda_non_model_data_list", len(cuda_non_model_data_list))
-    print(MemInfo.non_model_data_list)
+    print(cuda_non_model_data_list)
 
     res_file = open("tracer_results/param_wrapper_" + model_name + ".txt", "w", encoding="utf-8")
     for ddd in cuda_non_model_data_list:
